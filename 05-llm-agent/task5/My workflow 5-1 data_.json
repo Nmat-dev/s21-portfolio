@@ -1,0 +1,448 @@
+{
+  "name": "My workflow 5-1 copy",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -2688,
+        144
+      ],
+      "id": "e94c0cc3-0895-41eb-9687-5060cc102ccf",
+      "name": "Telegram Trigger",
+      "webhookId": "de8f6277-2b61-4fc0-8f63-659e27655e1a"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.user_prompt }}",
+        "options": {
+          "systemMessage": "=={{ $json.system_prompt }}"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        -2080,
+        160
+      ],
+      "id": "d91daaec-639f-4aec-8b9e-d47339bb1dbf",
+      "name": "AI Agent",
+      "alwaysOutputData": true,
+      "executeOnce": false,
+      "retryOnFail": false
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "GigaChat/GigaChat-2-Max",
+          "mode": "list",
+          "cachedResultName": "GigaChat/GigaChat-2-Max"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        -2064,
+        400
+      ],
+      "id": "df0a89e9-2a01-4d8b-8bed-bd19636b0479",
+      "name": "OpenAI Chat Model"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Управление состояниями ИИ-ментора\n\n// Функции работы с Static Data\nfunction getWorkflowData() {\n  return $getWorkflowStaticData('global');\n}\n\nfunction getMentorData() {\n  const allData = getWorkflowData();\n  if (!allData.mentor_states) {\n    allData.mentor_states = {};\n  }\n  return allData.mentor_states;\n}\n\nfunction getUserState(chatId) {\n  const mentorData = getMentorData();\n  if (!mentorData[chatId]) {\n    mentorData[chatId] = {\n      stage: 'greeting',\n      goal: '',\n      level: '',\n      plan: [],\n      sentConcepts: [],\n      currentTopicIndex: 0,\n      currentConceptIndex: 0,\n      dialogHistory: [],\n      lastUpdated: new Date().toISOString()\n    };\n  }\n  return mentorData[chatId];\n}\n\nfunction saveUserState(chatId, state) {\n  const mentorData = getMentorData();\n  mentorData[chatId] = state;\n  mentorData[chatId].lastUpdated = new Date().toISOString();\n  return true;\n}\n\nfunction addToHistory(chatId, role, content) {\n  const userState = getUserState(chatId);\n  if (!userState.dialogHistory) userState.dialogHistory = [];\n  userState.dialogHistory.push({ role, content, timestamp: new Date().toISOString() });\n}\n\n// Получаем данные из Telegram\nconst telegramData = items[0].json;\nconst message = telegramData.message.text.trim();\nconst chatId = telegramData.message.chat.id.toString();\nconst userName = telegramData.message.chat.first_name || 'Пользователь';\n\n// Сохраняем chat_id в Static Data\nconst allData = getWorkflowData();\nif (!allData.last_chat_ids) {\n  allData.last_chat_ids = {};\n}\nallData.last_chat_ids[chatId] = new Date().toISOString();\n\n// Обработка команды /reset\nif (message === '/reset') {\n  const allData = getWorkflowData();\n  if (allData.mentor_states && allData.mentor_states[chatId]) {\n    delete allData.mentor_states[chatId];\n  }\n  \n  return [{\n    json: {\n      system_prompt: `Ты — персональный ИИ-ментор. Данные пользователя сброшены.`,\n      user_prompt: `Скажи пользователю: \"Все данные сброшены. Напишите 'привет' или '/start' для начала обучения.\"`,\n      chat_id: chatId,\n      stage: 'reset',\n      user_name: userName\n    }\n  }];\n}\n\n// Получаем текущее состояние пользователя\nconst userState = getUserState(chatId);\n\n// Добавляем сообщение пользователя в историю\naddToHistory(chatId, 'user', message);\n\n// Подготовка данных для AI Agent\nlet systemPrompt = '';\nlet userPrompt = '';\n\n// Обработка команды /start\nif (message === '/start') {\n  userState.stage = 'greeting';\n  userState.goal = '';\n  userState.level = '';\n  userState.plan = [];\n  userState.sentConcepts = [];\n  userState.dialogHistory = [];\n}\n\n// Логика по этапам\nswitch(userState.stage) {\n  case 'greeting':\n    systemPrompt = `Ты — дружелюбный персональный ИИ-ментор. Твоё имя — Наставник. Поприветствуй пользователя и задай первый вопрос.`;\n    userPrompt = `Поприветствуй пользователя ${userName} и спроси: \"Чему бы ты хотел научиться в рамках работы над текущим учебным проектом или в рамках подготовки к собеседованию и трудоустройству?\"`;\n    userState.stage = 'waiting_goal';\n    break;\n    \n  case 'waiting_goal':\n    if (message.length < 3) {\n      systemPrompt = `Ты — персональный ИИ-ментор. Пользователь дал слишком короткий ответ.`;\n      userPrompt = `Пользователь ответил: \"${message}\". Вежливо попроси его уточнить, чему именно он хочет научиться.`;\n    } else {\n      userState.goal = message;\n      userState.stage = 'waiting_level';\n      systemPrompt = `Ты — персональный ИИ-ментор. Пользователь указал цель обучения. Теперь нужно узнать его текущий уровень.`;\n      userPrompt = `Пользователь ${userName} хочет научиться: \"${message}\". \n      \nСпроси его о текущем уровне знаний в этой области. Например:\n1. Новичок (полный ноль, только начинаю)\n2. Средний уровень (есть базовые знания, но хочу углубить)\n3. Продвинутый (уже имею опыт, хочу систематизировать)`;\n    }\n    break;\n    \n  case 'waiting_level':\n    userState.level = message;\n    userState.stage = 'creating_plan';\n    \n    systemPrompt = `Ты — персональный ИИ-ментор. Создай учебный план на основе цели и уровня пользователя.\n    \nТРЕБОВАНИЯ К ПЛАНУ:\n1. Создай 3-5 тем для изучения\n2. Каждая тема должна содержать 2-4 ключевых понятия\n3. План должен соответствовать уровню пользователя: ${message}\n4. Формат строго такой (пример):\nТема 1: REST API, HTTP методы, JSON\nТема 2: Аутентификация, JWT токены\nТема 3: Базы данных, SQL запросы, миграции\n\n5. После плана напиши: \"ГОТОВ_СОЗДАТЬ_ПЛАН\"`;\n    \n    userPrompt = `Создай учебный план для цели: \"${userState.goal}\"\nУровень пользователя: \"${message}\"\n\nСоздай структурированный план в указанном формате.`;\n    break;\n    \n  case 'creating_plan':\n    const allDataPlan = getWorkflowData();\n    const existingPlan = allDataPlan.mentor_states?.[chatId]?.plan;\n    \n    if (existingPlan && existingPlan.length > 0) {\n      userState.plan = existingPlan;\n      userState.stage = 'plan_ready';\n      \n      const planText = existingPlan.map((topic, i) => {\n        const conceptsList = topic.concepts.map(c => `• ${c}`).join(', ');\n        return `${i + 1}. ${topic.topic}: ${conceptsList}`;\n      }).join('\\n');\n      \n      systemPrompt = `Ты — персональный ИИ-ментор. Учебный план уже создан.`;\n      userPrompt = `Учебный план создан!\\n\\n${planText}\\n\\nОтправьте \"да\" для начала обучения.`;\n    } else {\n      systemPrompt = `Ты — персональный ИИ-ментор. Создаю учебный план...`;\n      userPrompt = `Создаю учебный план на основе ваших данных. Пожалуйста, подождите...`;\n    }\n    break;\n    \n  case 'plan_ready':\n    if (!userState.plan || userState.plan.length === 0) {\n      systemPrompt = `Ты — персональный ИИ-ментор. План еще не создан.`;\n      userPrompt = `Скажи пользователю: \"План еще не готов. Пожалуйста, подождите.\"`;\n      break;\n    }\n    \n    if (message.toLowerCase() === 'да' || \n        message.toLowerCase() === 'начать' || \n        message.toLowerCase() === 'start' ||\n        message.toLowerCase() === 'go') {\n      \n      userState.stage = 'sending_posts';\n      \n      let nextConcept = '';\n      if (userState.plan.length > 0 && userState.plan[0].concepts.length > 0) {\n        nextConcept = userState.plan[0].concepts[0];\n      }\n      \n      if (nextConcept) {\n        systemPrompt = `Ты — персональный ИИ-ментор. Тебе нужно создавать поисковые запросы для учебных постов.\n        \nВНИМАНИЕ! Если тебе нужна информация из интернета, ты должен вернуть ТОЛЬКО строку в формате:\ntavily(query=\"краткий поисковый запрос\")\n\nПРАВИЛА:\n1. НИКАКОГО другого текста, только этот формат\n2. Запрос должен быть на русском языке\n3. Запрос должен относиться к понятию: ${nextConcept}`;\n        \n        userPrompt = `Начинаем обучение! Первое понятие для изучения: \"${nextConcept}\".\n        \nСоздай поисковый запрос для получения информации по этому понятию.`;\n      } else {\n        systemPrompt = `Ты — персональный ИИ-ментор. В плане нет понятий.`;\n        userPrompt = `Скажи пользователя: \"В учебном плане нет понятий для изучения. Давайте создадим новый план.\"`;\n      }\n    } else if (message.toLowerCase() === 'нет' || message.toLowerCase() === 'no') {\n      systemPrompt = `Ты — персональный ИИ-ментор. Пользователь отказался от плана.`;\n      userPrompt = `Пользователь ответил \"нет\". Вежливо спроси, хочет ли он изменить цель обучения или у него есть вопросы.`;\n    } else {\n      systemPrompt = `Ты — персональный ИИ-ментор. Уточни у пользователя.`;\n      userPrompt = `Пользователь ответил: \"${message}\". \n      \nУточни: \"Хотите начать обучение по созданному плана? Ответьте 'да' или 'нет'.\"`;\n    }\n    break;\n    \n  case 'sending_posts':\n    let nextConcept = null;\n    let topicIndex = 0;\n    let conceptIndex = 0;\n    \n    for (let i = 0; i < userState.plan.length; i++) {\n      const topic = userState.plan[i];\n      for (let j = 0; j < topic.concepts.length; j++) {\n        const concept = topic.concepts[j];\n        if (!userState.sentConcepts || !userState.sentConcepts.includes(concept)) {\n          nextConcept = concept;\n          topicIndex = i;\n          conceptIndex = j;\n          break;\n        }\n      }\n      if (nextConcept) break;\n    }\n    \n    if (nextConcept) {\n      systemPrompt = `Ты — персональный ИИ-ментор. Твоя задача — создавать поисковые запросы для учебных постов.\n      \nВНИМАНИЕ! Если тебе нужна информация из интернета, ты должен вернуть ТОЛЬКО строку в формате:\ntavily(query=\"краткий поисковый запрос\")\n\nПРАВИЛА:\n1. НИКАКОГО другого текста, только этот формат\n2. Запрос должен быть на русском языке\n3. Запрос должен относиться к понятию: ${nextConcept}\n4. Запрос должен быть понятным и конкретным`;\n      \n      userPrompt = `Создай поисковый запрос для получения информации по понятию: \"${nextConcept}\"`;\n    } else {\n      userState.stage = 'completed';\n      systemPrompt = `Ты — персональный ИИ-ментор. Пользователь завершил все темы.`;\n      userPrompt = `Все учебные темы пройдены! Поздравь пользователя ${userName} и спроси: \"Что ты хочешь изучать дальше?\"`;\n    }\n    break;\n    \n  case 'completed':\n    userState.stage = 'waiting_goal';\n    userState.goal = '';\n    userState.level = '';\n    userState.plan = [];\n    userState.sentConcepts = [];\n    \n    systemPrompt = `Ты — персональный ИИ-ментор. Пользователь завершил один цикл обучения и хочет изучать что-то новое.`;\n    userPrompt = `Поздравь пользователя ${userName} с завершением обучения! Теперь спроси: \"Чему бы ты хотел научиться дальше?\"`;\n    break;\n    \n  default:\n    systemPrompt = `Ты — персональный ИИ-ментор. Ответь пользователю соответствующим образом.`;\n    userPrompt = `Пользователь ${userName} написал: \"${message}\". Ответь соответствующим образом.`;\n}\n\n// Сохраняем обновленное состояние\nsaveUserState(chatId, userState);\n\n// Сохраняем chat_id в Static Data\nconst allDataFinal = getWorkflowData();\nif (!allDataFinal.last_chat_ids) {\n  allDataFinal.last_chat_ids = {};\n}\nallDataFinal.last_chat_ids[chatId] = new Date().toISOString();\n\n// ВАЖНО: Создаем выходные данные с chat_id\nconst outputData = {\n  // Поля для AI Agent\n  system_prompt: systemPrompt,\n  user_prompt: userPrompt,\n  \n  // chat_id ДОЛЖЕН быть здесь - проверяем\n  chat_id: chatId,\n  \n  // Дополнительные данные\n  original_message: message,\n  current_stage: userState.stage,\n  user_name: userName,\n  user_goal: userState.goal,\n  user_level: userState.level,\n  user_plan: userState.plan\n};\n\n// Возвращаем данные\nreturn [{ json: outputData }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2384,
+        256
+      ],
+      "id": "2e541acb-fcd2-4013-9a89-5dae8acfb971",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Парсинг ответа от AI Agent - ИСПРАВЛЕННАЯ ВЕРСИЯ ДЛЯ MERGE NODE\n\nconsole.log(\"=== Code in JavaScript1 (Merge version) ===\");\n\n// 1. Получаем данные от Merge node\n// Merge node передает массив items, где:\n// items[0] - данные от AI Agent (output)\n// items[1] - данные от первой ноды (chat_id и другие поля)\n\nif (items.length < 2) {\n  console.log(\"❌ ERROR: Merge node не передал все данные\");\n  return [{\n    json: {\n      action: 'direct_response',\n      telegram_text: \"Ошибка системы. Пожалуйста, отправьте /start.\",\n      chat_id: \"error_merge_failed\"\n    }\n  }];\n}\n\n// 2. Берем ответ AI из первого элемента\nconst aiOutput = items[0];\nconst aiResponse = aiOutput.json.output || aiOutput.json.text || \"\";\n\nconsole.log(\"Ответ AI:\", aiResponse.substring(0, 100) + \"...\");\n\n// 3. Берем chat_id из второго элемента\nconst firstNodeData = items[1];\nconst chatId = firstNodeData.json.chat_id;\n\nconsole.log(\"Chat ID из первой ноды:\", chatId);\nconsole.log(\"Все поля из первой ноды:\", Object.keys(firstNodeData.json));\n\nif (!chatId) {\n  console.log(\"❌ ERROR: chat_id не найден во втором элементе\");\n  return [{\n    json: {\n      action: 'direct_response',\n      telegram_text: \"Системная ошибка. Отправьте /start заново.\",\n      chat_id: \"error_no_chat_id\"\n    }\n  }];\n}\n\n// 4. ПРОВЕРЯЕМ, ЕСТЬ ЛИ \"ГОТОВ_СОЗДАТЬ_ПЛАН\"\nconst isPlanReady = aiResponse.includes(\"ГОТОВ_СОЗДАТЬ_ПЛАН\") || \n                   aiResponse.includes(\"ГОТОВСОЗДАТЬПЛАН\") ||\n                   aiResponse.toLowerCase().includes(\"готов создать план\");\n\n// 5. Ищем tavily(query=\"...\")\nconst tavilyRegex = /tavily\\(query=\"([^\"]+)\"\\)/;\nconst tavilyMatch = aiResponse.match(tavilyRegex);\n\nif (tavilyMatch) {\n  console.log(\"✅ Найден Tavily запрос:\", tavilyMatch[1]);\n  return [{\n    json: {\n      action: 'search',\n      search_query: tavilyMatch[1],\n      chat_id: chatId,\n      original_response: aiResponse\n    }\n  }];\n}\n\n// 6. ПАРСИНГ УЧЕБНОГО ПЛАНА\nconst lines = aiResponse.split('\\n');\nlet parsedPlan = [];\nlet currentTopic = null;\n\nfor (let line of lines) {\n  line = line.trim();\n  \n  const topicMatch = line.match(/^Тема\\s+\\d+:?\\s*(.+)/i);\n  \n  if (topicMatch) {\n    if (currentTopic) {\n      parsedPlan.push(currentTopic);\n    }\n    \n    const content = topicMatch[1].trim();\n    \n    if (content.includes(':')) {\n      const parts = content.split(':');\n      const topicName = parts[0].trim();\n      const conceptsStr = parts.slice(1).join(':').trim();\n      const concepts = conceptsStr.split(',').map(c => c.trim()).filter(c => c);\n      \n      currentTopic = {\n        topic: topicName,\n        concepts: concepts\n      };\n    } else if (content.includes(',')) {\n      const concepts = content.split(',').map(c => c.trim()).filter(c => c);\n      currentTopic = {\n        topic: `Тема ${parsedPlan.length + 1}`,\n        concepts: concepts\n      };\n    } else {\n      currentTopic = {\n        topic: content,\n        concepts: []\n      };\n    }\n  }\n  else if (currentTopic && (line.startsWith('-') || line.startsWith('•') || line.startsWith('*'))) {\n    const concept = line.substring(1).trim();\n    if (concept) {\n      currentTopic.concepts.push(concept);\n    }\n  }\n}\n\nif (currentTopic) {\n  parsedPlan.push(currentTopic);\n}\n\n// Проверяем, нашли ли план\nif (parsedPlan.length > 0) {\n  console.log(\"✅ Найден учебный план:\", parsedPlan.length, \"тем\");\n  \n  const allData = $getWorkflowStaticData('global');\n  \n  if (!allData.mentor_states) {\n    allData.mentor_states = {};\n  }\n  if (!allData.mentor_states[chatId]) {\n    allData.mentor_states[chatId] = {};\n  }\n  \n  allData.mentor_states[chatId].plan = parsedPlan;\n  allData.mentor_states[chatId].stage = 'plan_ready';\n  allData.mentor_states[chatId].sentConcepts = [];\n  \n  const planText = parsedPlan.map((topic, i) => {\n    const conceptsList = topic.concepts.map(c => `• ${c}`).join('\\n');\n    return `${i + 1}. ${topic.topic}\\n${conceptsList}`;\n  }).join('\\n\\n');\n  \n  const responseText = `✅ Учебный план создан!\\n\\n${planText}\\n\\nОтправьте \"да\" для начала обучения.`;\n  \n  return [{\n    json: {\n      action: 'direct_response',\n      telegram_text: responseText,\n      chat_id: chatId,\n      original_response: aiResponse\n    }\n  }];\n}\n\n// 7. Если нашли \"ГОТОВ_СОЗДАТЬ_ПЛАН\" но не распарсили план\nif (isPlanReady) {\n  console.log(\"📋 AI сообщил, что план готов\");\n  \n  const allData = $getWorkflowStaticData('global');\n  \n  if (allData.mentor_states && allData.mentor_states[chatId] && allData.mentor_states[chatId].plan) {\n    const plan = allData.mentor_states[chatId].plan;\n    const planText = plan.map((topic, i) => {\n      const conceptsList = topic.concepts.map(c => `• ${c}`).join('\\n');\n      return `${i + 1}. ${topic.topic}\\n${conceptsList}`;\n    }).join('\\n\\n');\n    \n    const responseText = `✅ Учебный план создан!\\n\\n${planText}\\n\\nОтправьте \"да\" для начала обучения.`;\n    \n    return [{\n      json: {\n        action: 'direct_response',\n        telegram_text: responseText,\n        chat_id: chatId,\n        original_response: aiResponse\n      }\n    }];\n  }\n  \n  return [{\n    json: {\n      action: 'direct_response',\n      telegram_text: \"Учебный план готов! Отправьте 'да' для начала обучения.\",\n      chat_id: chatId,\n      original_response: aiResponse\n    }\n  }];\n}\n\n// 8. Это обычный ответ (приветствие, вопрос и т.д.)\nconsole.log(\"📝 Отправляем прямой ответ пользователю\");\nreturn [{\n  json: {\n    action: 'direct_response',\n    telegram_text: aiResponse,\n    chat_id: chatId,\n    original_response: aiResponse\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1552,
+        176
+      ],
+      "id": "ab27a2b7-93c3-4e7d-985a-fe3130521a89",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.numeric_chat_id }}",
+        "text": "=={{ $json.text }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        576,
+        352
+      ],
+      "id": "9addbcf2-5635-48e2-8e58-1b84c5032100",
+      "name": "Send a text message1",
+      "webhookId": "aab5b19a-97b0-4b9a-b108-be503dda4a87"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=\nChat ID: {{ $json.chat_id }}\nПоисковый запрос: {{ $json.search_query }}\n\nКраткий ответ от Tavily: {{ $json.answer }}\n\nИспользуй ТОЛЬКО первые 3 результата:\n\n{{ \n  $json.results.slice(0, 3).map((r, i) => \n    `${i+1}. ${r.title}\\n   ${r.content.substring(0, 150)}...`\n  ).join('\\n\\n') \n}}\n\nНа основе ЭТИХ результатов дай краткий ответ (максимум 500 символов):\n- Основные идеи\n- 1-2 практических совета\n- Ключевые источники\n\nОБЯЗАТЕЛЬНО в конце добавь: [chat_id: {{ $json.chat_id }}]",
+        "options": {
+          "systemMessage": "Ты - ассистент, который анализирует результаты поиска. \nИспользуй ТОЛЬКО информацию из предоставленных результатов.\nОтвечай кратко и по делу, максимум 500 символов.\nВ конце ответа добавь строку: [chat_id: {{ $json.chat_id }}]"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        -448,
+        352
+      ],
+      "id": "c42d89da-1533-4340-9faf-ab8896198874",
+      "name": "AI Agent1"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "GigaChat/GigaChat-2-Max",
+          "mode": "list",
+          "cachedResultName": "GigaChat/GigaChat-2-Max"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        -480,
+        592
+      ],
+      "id": "1debd089-aabb-4ee2-86e6-4ef7b1f5da68",
+      "name": "OpenAI Chat Model1"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "3f22fdfb-7750-45ff-b8e3-9f4463879fe6",
+              "leftValue": "={{ $json.action }}",
+              "rightValue": "direct_response",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -1328,
+        176
+      ],
+      "id": "9f549d1a-40c2-41af-bcbd-730b28ba0514",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chat_id }}",
+        "text": "={{ $json.telegram_text }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -1072,
+        16
+      ],
+      "id": "3ac8fd24-227b-4024-b40f-20c8f821d849",
+      "name": "Send a text message",
+      "webhookId": "0baab7bc-21c4-4983-af0f-75fb4dc1bf93"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.tavily.com/search",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer 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"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n   \"query\": \"={{$json.search_query}}\",\n   \"search_depth\": \"basic\",\n   \"include_answer\": true\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1056,
+        352
+      ],
+      "id": "95377714-76f9-4e07-aa4f-f25965ac808c",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Извлекаем chat_id и очищаем ответ AI\ntry {\n  const aiResponse = items[0].json.output || \"\";\n  \n  console.log(\"✅ Получен ответ от AI Agent1:\", aiResponse);\n  \n  // Ищем chat_id в формате [chat_id: 375331708]\n  const chatIdRegex = /\\[chat_id:\\s*([^\\]]+)\\]/;\n  const match = aiResponse.match(chatIdRegex);\n  \n  // ЗАХАРДКОДЕННЫЙ CHAT_ID ДЛЯ ТЕСТА\n  let chatId = \"375331708\"; // <-- ВАШ ЧАТ АЙДИ\n  \n  console.log(\"⚠️ ВНИМАНИЕ: Используется захардкоженный chat_id:\", chatId);\n  console.log(\"⚠️ Если нужно найти в ответе AI, раскомментируйте код ниже\");\n  \n  /* \n  // Раскомментируйте, чтобы искать chat_id в ответе AI\n  if (match) {\n    chatId = match[1].trim();\n    console.log(\"✅ Найден Chat ID в ответе:\", chatId);\n  } else {\n    console.log(\"⚠️ Chat ID не найден в ответе, используем захардкоженный\");\n  }\n  */\n  \n  // Очищаем ответ от метки chat_id\n  const cleanText = aiResponse.replace(chatIdRegex, \"\").trim();\n  \n  console.log(\"✅ Очищенный текст:\", cleanText.substring(0, 100) + \"...\");\n  console.log(\"✅ Итоговый Chat ID для Telegram:\", chatId);\n  console.log(\"✅ Chat ID тип данных:\", typeof chatId);\n  \n  return [{\n    json: {\n      chat_id: chatId,           // <-- Захардкоженный ID\n      text: cleanText,\n      telegram_text: cleanText,\n      original_response: aiResponse,\n      debug: {\n        found_chat_id: match !== null,\n        chat_id_length: chatId.length,\n        is_hardcoded: true,      // <-- Флаг, что использован захардкоженный ID\n        chat_id_value: chatId\n      }\n    }\n  }];\n  \n} catch (error) {\n  console.error(\"❌ Ошибка обработки ответа AI:\", error);\n  \n  // В случае ошибки тоже используем захардкоженный ID\n  return [{\n    json: {\n      chat_id: \"375331708\",      // <-- Все равно захардкоженный\n      text: `Ошибка обработки: ${error.message}\\n\\nОтвет AI: ${items[0]?.json?.output || 'нет'}`,\n      telegram_text: `Ошибка: ${error.message}`,\n      error: error.message,\n      is_error: true,\n      is_hardcoded: true\n    }\n  }];\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        112,
+        352
+      ],
+      "id": "451ac14d-4c90-4849-b35f-ede78e29eecf",
+      "name": "Code in JavaScript3"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "40e55bd7-86be-40a2-b341-b28148b544e5",
+              "name": "numeric_chat_id",
+              "value": "={{ parseInt($json.chat_id) }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        352,
+        352
+      ],
+      "id": "e1b8b9ed-a10a-4948-be5d-c417602dbe15",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "jsCode": "// === Code Node: Парсинг ответа Tavily ===\ntry {\n  console.log(\"=== ПАРСИНГ ОТВЕТА TAVILY API ===\");\n  \n  // 1. Получаем ответ от HTTP Request\n  const tavilyResponse = items[0].json;\n  console.log(\"📥 Ответ Tavily получен\");\n  \n  // 2. Получаем исходные данные (из Code in JavaScript1)\n  const searchQuery = items[0].json.search_query || \"\";\n  const chatId = items[0].json.chat_id || \"unknown\";\n  \n  console.log(\"🔍 Данные запроса:\");\n  console.log(`  Chat ID: ${chatId}`);\n  console.log(`  Поисковый запрос: \"${searchQuery}\"`);\n  console.log(`  Ответ содержит answer: ${!!tavilyResponse.answer}`);\n  console.log(`  Ответ содержит results: ${tavilyResponse.results ? tavilyResponse.results.length : 0}`);\n  \n  // 3. Подготавливаем данные для AI Agent1\n  const preparedData = {\n    chat_id: chatId,\n    search_query: searchQuery,\n    answer: tavilyResponse.answer || \"\",\n    results: tavilyResponse.results || []\n  };\n  \n  console.log(\"✅ Данные подготовлены для AI Agent1\");\n  console.log(`  Answer length: ${preparedData.answer.length} символов`);\n  console.log(`  Results: ${preparedData.results.length} результатов`);\n  \n  // 4. ОТЛАДКА: Показываем первый результат\n  if (preparedData.results.length > 0) {\n    console.log(\"📄 Первый результат:\");\n    console.log(`  Title: ${preparedData.results[0].title}`);\n    console.log(`  Content: ${preparedData.results[0].content.substring(0, 100)}...`);\n  }\n  \n  return [{\n    json: {\n      ...preparedData,\n      debug: {\n        parsed_successfully: true,\n        results_count: preparedData.results.length,\n        answer_exists: !!preparedData.answer,\n        chat_id: chatId,\n        timestamp: new Date().toISOString()\n      }\n    }\n  }];\n  \n} catch (error) {\n  console.error(\"❌ Ошибка парсинга Tavily:\", error);\n  \n  return [{\n    json: {\n      chat_id: \"error\",\n      search_query: \"Ошибка запроса\",\n      answer: `Ошибка при обработке ответа Tavily: ${error.message}`,\n      results: [],\n      error: error.message,\n      debug: {\n        parsed_successfully: false,\n        error: true\n      }\n    }\n  }];\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -784,
+        368
+      ],
+      "id": "1ed82622-b700-4c73-9a14-b2231cf46b1f",
+      "name": "Code in JavaScript2"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -1792,
+        160
+      ],
+      "id": "ab35529d-97d9-4bc3-b195-b0be598e4def",
+      "name": "Merge"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent1": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript3": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Send a text message1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript2": {
+      "main": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "",
+  "meta": {
+    "instanceId": "a1e208e9dd60ab724d72b2339e889b366026a52f5068abe728c27c019cb474b3"
+  },
+  "tags": []
+}

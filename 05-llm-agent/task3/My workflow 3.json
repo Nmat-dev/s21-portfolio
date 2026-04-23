@@ -1,0 +1,270 @@
+{
+  "name": "My workflow 3",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 9
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "39dcea82-bcfb-4533-bb81-6bc874f28ed8",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "url": "https://fetchrss.com/feed/1vTkdr1hdDR51vTkdT5tq4N1.rss",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        208,
+        224
+      ],
+      "id": "ec2191ee-d83e-40c4-a876-494d0d0271c4",
+      "name": "RSS Read"
+    },
+    {
+      "parameters": {
+        "url": "https://fetchrss.com/feed/1vTkdr1hdDR51vTkepEdUB62.rss",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        208,
+        0
+      ],
+      "id": "dbceb1d1-018b-4da9-871d-a7c2037c63c1",
+      "name": "RSS Read1"
+    },
+    {
+      "parameters": {
+        "url": "https://fetchrss.com/feed/1vTkdr1hdDR51vTkfj56K8qh.rss",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        208,
+        -208
+      ],
+      "id": "e7a450df-3ae4-482f-b223-cfed435d200b",
+      "name": "RSS Read2"
+    },
+    {
+      "parameters": {
+        "numberInputs": 3
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        544,
+        -16
+      ],
+      "id": "7376cf4e-eac0-4be9-b60c-26651924b9aa",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "{{ $json.title }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        720,
+        0
+      ],
+      "id": "b0560275-e55a-4b3d-9f57-240723591407",
+      "name": "Aggregate"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('Aggregate').item }}",
+        "options": {
+          "systemMessage": "Форма дайджеста должна выглядеть так:\n\nОбщее саммари о постах в одном абзаце.\nНазвание канала - количество постов\nпост 1: краткое описание, ссылка\nпост 2: краткое описание, ссылка\nНазвание канала - количество постов\nпост 1: краткое описание, ссылка"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        928,
+        0
+      ],
+      "id": "1c465e3e-dc54-459b-92ee-ae5559f5995c",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "GigaChat/GigaChat-2-Max",
+          "mode": "list",
+          "cachedResultName": "GigaChat/GigaChat-2-Max"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        928,
+        240
+      ],
+      "id": "9ae0e191-ca23-48a4-9c2c-e42fbd431626",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "bihnTotisYkwbUQx",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "-1003470870788",
+        "text": "={{ $json.output }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1280,
+        0
+      ],
+      "id": "44fc45b2-8c85-4235-a340-91eca3523142",
+      "name": "Send a text message",
+      "webhookId": "b723cc2a-e70c-407e-bbe2-b57972b6ec4c",
+      "credentials": {
+        "telegramApi": {
+          "id": "nVc8KewyGTZa1bB1",
+          "name": "Telegram account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "RSS Read",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "RSS Read1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "RSS Read2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS Read": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "RSS Read1": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "RSS Read2": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "483f56fe-a0bb-4c33-b682-06cd95a288c6",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a1e208e9dd60ab724d72b2339e889b366026a52f5068abe728c27c019cb474b3"
+  },
+  "id": "tFqa0aC9um4PQ2rP",
+  "tags": []
+}

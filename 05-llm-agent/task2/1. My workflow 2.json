@@ -1,0 +1,163 @@
+{
+  "name": "My workflow 2",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "b33f29d8-7566-418b-b8e7-bbde2ff62495",
+      "name": "Telegram Trigger",
+      "webhookId": "24214c49-214b-49e4-a93b-d051ae309126",
+      "credentials": {
+        "telegramApi": {
+          "id": "nVc8KewyGTZa1bB1",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "={{ $json.output }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        704,
+        0
+      ],
+      "id": "4c59e885-391a-44fc-a778-9f56e1af1045",
+      "name": "Send a text message",
+      "webhookId": "5d7e9023-913d-4a1a-ba25-665be656856a",
+      "credentials": {
+        "telegramApi": {
+          "id": "nVc8KewyGTZa1bB1",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "id",
+          "value": "GigaChat/GigaChat-2-Max"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        352,
+        272
+      ],
+      "id": "b64a58c3-9a20-4864-8e2c-a13347a16de6",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "bihnTotisYkwbUQx",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.message.text }}",
+        "options": {
+          "systemMessage": "Ты карьерный консультант в сфере IT Твоя цель - помочь выбрать специализацию. Спроси \n1. Мой предыдущий жизненный опыт и достижения\n2. Опыт прохождения отборочного бассейна в школе 21"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        352,
+        0
+      ],
+      "id": "9580ada5-f59f-4262-945e-56a903852410",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.message.chat.id }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        448,
+        272
+      ],
+      "id": "f3d76385-b365-4999-96a6-359c228bfdbd",
+      "name": "Simple Memory"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "6d8aff49-c048-4261-9128-bbc7fc78be65",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a1e208e9dd60ab724d72b2339e889b366026a52f5068abe728c27c019cb474b3"
+  },
+  "id": "h60lrQKjtynfxRhn",
+  "tags": []
+}

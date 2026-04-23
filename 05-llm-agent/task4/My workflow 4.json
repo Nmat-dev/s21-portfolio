@@ -1,0 +1,351 @@
+{
+  "name": "My workflow 4",
+  "nodes": [
+    {
+      "parameters": {
+        "operation": "formatDate",
+        "date": "={{ $today }}",
+        "format": "yyyy-MM-dd",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dateTime",
+      "typeVersion": 2,
+      "position": [
+        -5504,
+        864
+      ],
+      "id": "93b233cc-706b-4e8d-9ada-93e9af31ff1d",
+      "name": "Date & Time"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.hh.ru/vacancies",
+        "sendQuery": true,
+        "specifyQuery": "json",
+        "jsonQuery": "={\n  \"text\": \"DevOps\",\n  \"area\": 1,\n  \"per_page\": 5,\n  \"page\": 0,\n  \"order_by\": \"publication_time\",\n  \"period\": 7,\n  \"enable_snippets\": false\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -5328,
+        864
+      ],
+      "id": "7724554b-4867-4e53-8553-241db59a56bd",
+      "name": "get_vacansies"
+    },
+    {
+      "parameters": {
+        "chatId": "926771931",
+        "text": "={{ $('Postgres2').item.json.title }}\n\n{{ $('summary').item.json.message.content }}\n\nhttps://hh.ru/vacancy/{{ $('Postgres2').item.json.vac_id }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -2272,
+        960
+      ],
+      "id": "0da6425f-3e3c-4fb8-a4bb-2e9a0d4970b8",
+      "name": "Telegram",
+      "webhookId": "50ae27cb-26af-4701-aab1-b38cb8600ef3",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "721fd82e-3ec7-442d-ae38-fdd9212b6b95",
+              "leftValue": "={{ $json.message.content }}",
+              "rightValue": "\"{\"result\":true}\"",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -2640,
+        784
+      ],
+      "id": "75a37a84-f349-4c2a-8b2f-d98a1bbf0cf5",
+      "name": "If",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "openai/gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "OPENAI/GPT-4O-MINI"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Ты — опытный копирайтер и HR-специалист. Твоя задача — проанализировать вакансию и создать её краткое описание, строго по следующему шаблону:\n\n🎯 Обязанности:\n • элемент списка\n\n❗️Требования:\n • элемент списка\n\n☕️ Условия:\n • элемент списка",
+              "role": "system"
+            },
+            {
+              "content": "=[\n  {\n    \"name\": {{ $('Postgres2').item.json.title }},\n    \"experience\": {{ $('Postgres2').item.json.experience }},\n    \"key_skills\": {{ $('Postgres2').item.json.key_skills }},\n    \"description\": {{ $('Postgres2').item.json.description }}\n  }\n]"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        -2432,
+        720
+      ],
+      "id": "b8755b3a-3f01-4d70-b4d2-78ba0160548f",
+      "name": "summary",
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000,
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "chatId": "926771931",
+        "text": "=НЕ ПОДХОДИТ\n{{ $('Postgres2').item.json.title }}\nhttps://hh.ru/vacancy/{{ $('Postgres2').item.json.vac_id }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -2432,
+        848
+      ],
+      "id": "efffdb5a-4c50-4738-af30-c1d82f4cc41b",
+      "name": "Telegram1",
+      "webhookId": "91715aea-4a26-4a37-a9cb-324156a26ab4",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtHour": 9
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -5680,
+        864
+      ],
+      "id": "5001c160-eb63-4d7c-81ad-8b3898c6189f",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "chatId": "-1003470870788",
+        "text": "={{ $json.output }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -4112,
+        864
+      ],
+      "id": "98c92337-cd87-4956-9a2f-f55dd8337084",
+      "name": "telegram_send_message",
+      "webhookId": "542f9469-a840-42cd-a36b-3a460991c3ab",
+      "credentials": {
+        "telegramApi": {
+          "id": "nVc8KewyGTZa1bB1",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "GigaChat/GigaChat-2-Max",
+          "mode": "list",
+          "cachedResultName": "GigaChat/GigaChat-2-Max"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        -4736,
+        1072
+      ],
+      "id": "0a040584-aeaa-4a63-acdb-54fcf666c59d",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "bihnTotisYkwbUQx",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "items",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        -5152,
+        864
+      ],
+      "id": "5475767e-90ab-473b-b8f7-7bef7fe7116c",
+      "name": "Split Out"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Подготовка данных для AI Agent\nlet vacanciesForAnalysis = \"\";\nlet vacancyCount = 0;\n\nfor (const item of items) {\n  vacancyCount++;\n  const vac = item.json;\n  \n  // Собираем ВСЕ текстовые поля вакансии\n  vacanciesForAnalysis += `=== ВАКАНСИЯ ${vacancyCount} ===\\n`;\n  vacanciesForAnalysis += `Должность: ${vac.name || 'Нет названия'}\\n`;\n  vacanciesForAnalysis += `Требования: ${vac.snippet?.requirement || 'Не указаны'}\\n`;\n  vacanciesForAnalysis += `Обязанности: ${vac.snippet?.responsibility || 'Не указаны'}\\n`;\n  \n  // Если есть полное описание - добавляем его\n  if (vac.description) {\n    // Убираем HTML-теги для чистого текста\n    const cleanDesc = vac.description.replace(/<[^>]*>/g, ' ').substring(0, 1000);\n    vacanciesForAnalysis += `Описание: ${cleanDesc}\\n`;\n  }\n  \n  vacanciesForAnalysis += \"---\\n\\n\";\n}\n\n// Формируем итоговый промпт\nconst finalPrompt = `\nПРОАНИЛИЗИРУЙ ЭТИ ВАКАНСИИ И ВЫДЕЛИ ТОП-15 НАВЫКОВ:\n\n${vacanciesForAnalysis}\n\nВНИМАНИЕ! Твоя задача:\n1. Извлеки ВСЕ навыки, технологии, инструменты из текста выше\n2. Нормализуй их (примеры: \"Python\"/\"питон\"/\"Python 3\" → \"python\", \"Docker\"/\"докер\" → \"docker\")\n3. Подсчитай частоту каждого навыка\n4. Выведи ТОП-15 самых частых навыков в ТОЧНОМ формате:\n\nНа этой неделе я спарсил ${vacancyCount} свежих вакансий по направлению DevOps. Самыми популярными являются следующие требования:\n\n1. [навык_1]: [количество] раз\n2. [навык_2]: [количество] раз\n...\n15. [навык_15]: [количество] раз\n\nВАЖНО: Только список в этом формате, без дополнительного текста!\n`;\n\nreturn [{\n  json: {\n    prompt_text: finalPrompt,\n    vacancy_count: vacancyCount,\n    raw_vacancies: vacanciesForAnalysis // для отладки\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -4944,
+        864
+      ],
+      "id": "8c46cf19-c979-48fd-970c-6049c8fd4f05",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.prompt_text }}",
+        "options": {
+          "systemMessage": "Ты — HR-аналитик. Тебе будет предоставлен текст с несколькими вакансиями.\n\nТвоя задача:\n\nВнимательно проанализировать текст каждой вакансии.\n\nВыделить все упоминания навыков, технологий, инструментов и профессиональных требований.\n\nПривести их к единому нормативному виду (например: \"Python\", \"питон\", \"Python 3.11\", \"знание Python\" -> \"python\"; \"Docker\", \"Docker контейнеризация\" -> \"docker\").\n\nПодсчитать, сколько раз каждый нормализованный навык встречается во всех вакансиях.\n\nВывести ТОП-15 самых частых требований строго в следующем формате:\n\ntext\nНа этой неделе я спарсил [N] свежих вакансий по направлению DevOps. Самыми популярными являются следующие требования:\n\n1. [навык_1]: [количество] раз\n2. [навык_2]: [количество] раз\n... и так до 15.\nВажно: Выводи только итоговый список в указанном формате, без дополнительных пояснений."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        -4736,
+        864
+      ],
+      "id": "4a94a0fe-803f-4f22-9753-c0052d534678",
+      "name": "AI Agent"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Date & Time": {
+      "main": [
+        [
+          {
+            "node": "get_vacansies",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get_vacansies": {
+      "main": [
+        [
+          {
+            "node": "Split Out",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Date & Time",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "telegram_send_message": {
+      "main": [
+        []
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "telegram_send_message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "09ba9e35-36aa-4e9d-a6d4-d9120b769bbd",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a1e208e9dd60ab724d72b2339e889b366026a52f5068abe728c27c019cb474b3"
+  },
+  "id": "EH1d58fD4f1IwBdD",
+  "tags": []
+}

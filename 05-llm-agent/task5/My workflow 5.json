@@ -1,0 +1,165 @@
+{
+  "name": "My workflow 6",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "09402ef6-0126-4505-a8b5-ba172ef7bcd5",
+      "name": "Telegram Trigger",
+      "webhookId": "aeef7b4f-4e94-4c6f-af17-91eb473b5fb0",
+      "credentials": {
+        "telegramApi": {
+          "id": "ArgtGYxbRWO8EGYt",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.message.text }}",
+        "options": {
+          "systemMessage": "Общайся с пользователем по блокам:\n\n1. Спроси \"Чему бы ты хотел научиться\"\n2. Спроси \"Какой твой уровень? (новичок, средний, эксперт)\"\n3. Опираясь на ответ пользователя, сформируй контент-план в виде списка тем для изучения. Каждая тема содержит в себе перечень основных понятий.\nПример тем:\nТема 1: [понятие 1, понятие 2, понятие 3...]\n\nТема 2: [понятие 1, понятие 2, понятие 3...]\n\n4. Получи подтверждение от пользователя, что план подходит\n5. Ответь пользователю небольшими постами, освещающие понятия тем. Каждый раз - про один из пунктов этого плана.\n\nВажно! не отправляй повторы, если тема уже была, не присылай пост на эту тему снова.\n6. После полного прохождения всех запланированных тем спроси, что пользователь хочет изучать дальше.\n7. Если пользователь спросит, сохранил ли ты план, скажи да."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        208,
+        0
+      ],
+      "id": "53c4c3af-2f50-4162-90d4-2b3a966d6769",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "GigaChat/GigaChat-2-Max",
+          "mode": "list",
+          "cachedResultName": "GigaChat/GigaChat-2-Max"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        208,
+        224
+      ],
+      "id": "60c11059-dfd8-4c02-942a-d05f578ce98c",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "Wt0mKXeq09oM370g",
+          "name": "OpenAi account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "={{ $json.output }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        560,
+        0
+      ],
+      "id": "9417983f-e23a-48b3-affa-3fb55ce1ca53",
+      "name": "Send a text message",
+      "webhookId": "a8b4eb62-d79e-4f55-9b0b-9f07978b0bf4",
+      "credentials": {
+        "telegramApi": {
+          "id": "ArgtGYxbRWO8EGYt",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.message.chat.id }}",
+        "contextWindowLength": 20
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        304,
+        224
+      ],
+      "id": "b182613c-50ee-4abe-97fb-5d14705232eb",
+      "name": "Simple Memory"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "d279c218-38f6-4252-b3ef-72725ce6eb0b",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a1e208e9dd60ab724d72b2339e889b366026a52f5068abe728c27c019cb474b3"
+  },
+  "id": "I4x8n6PTuNU3cPmm",
+  "tags": []
+}
