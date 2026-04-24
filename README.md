@@ -1,45 +1,103 @@
-# s21-portfolio
-Projects from School 21 (Sber): Linux administration, Bash scripting, Networks, Monitoring (Prometheus/Grafana), LLM AI-agent (n8n + GigaChat). Portfolio.
+# 👨‍💻 Наиль Матыгуллин | SRE & AI/LLM Enthusiast
 
+> Практикующий инженер-самоучка. Фокус на Pyton(update soon), Linux-администрировании, автоматизации (Bash, SQL) и создании агентных систем на базе LLM.
+
+[📧 Email](mailto:nail.matygullin@gmail.com) • [💬 Telegram](https://t.me/Matygullin) • [🐙 GitHub](https://github.com/Nmat-dev)
+
+---
 
 ## 🛠 Технологический стек
+
 | Категория | Инструменты |
 |-----------|-------------|
-| **ОС & Сети** | Ubuntu Server, systemd, iptables, DHCP, NAT, TCP/IP, tcpdump, iperf3 |
-| **Мониторинг** | Prometheus, Grafana, GoAccess, node_exporter, awk/grep |
-| **Скриптинг & БД** | Bash, SQL (JOIN, CTE, оптимизация), Docker (базово) |
-| **AI & LLM** | n8n, GigaChat API, Tavily Search, Telegram Bot API, Prompt Engineering, RAG-концепции |
+| **ОС & Сети** | Ubuntu Server, systemd, iptables, DHCP, NAT, TCP/IP, tcpdump, iperf3, traceroute |
+| **Мониторинг** | Prometheus, Grafana, GoAccess, node_exporter, awk/grep для анализа логов |
+| **Скриптинг & БД** | Bash (awk, sed, grep), SQL (JOIN, CTE, оконные функции, оптимизация), Docker (базово) |
+| **AI & LLM** | n8n, GigaChat API, Tavily Search, Telegram Bot API, Prompt Engineering, RAG-концепции, агентные воркфлоу |
 | **Инструменты** | Git, VirtualBox, Netplan, Apache2, Notion/Obsidian |
 
+---
+
 ## 📂 Проекты
-### 🤖 ИИ-агент для карьерного консультирования (n8n + GigaChat)
-Автономный Telegram-бот, который проводит диагностику, анализирует рынок вакансий и формирует персональный учебный план.
-- **Стек:** n8n, Docker, GigaChat API, Tavily Search, Telegram API, SimpleMemory
-- **Результат:** Воркфлоу с агентной архитектурой, суммаризацией новостей и парсингом HH.ru. Экспортированные JSON-конфиги доступны в репозитории.
-- 🔗 *[Ссылка на папку/файлы проекта]*
 
-### 📊 Linux Monitoring v2.0 (Prometheus + Grafana)
-Система мониторинга метрик сервера в реальном времени с кастомными дашбордами и алертами.
-- **Стек:** Bash, Prometheus, Grafana, node_exporter, GoAccess, nginx logs
-- **Результат:** Автоматизированный сбор CPU/RAM/Disk/Network, визуализация в Grafana, кастомный bash-exporter для nginx.
-- 🔗 *[Ссылка на папку/файлы проекта]*
+### 🤖 [ИИ-агент для карьерного консультирования](./05-llm-agent/README.md)
+> Автономный Telegram-бот на базе n8n + GigaChat для поддержки образовательного пути.
 
-### 🌐 Сети в Linux (Лабораторный стенд)
-Развертывание и настройка корпоративной сети из 5 VM с маршрутизацией, DHCP, NAT и фаерволом.
-- **Стек:** VirtualBox, Ubuntu 20.04, netplan, iptables, isc-dhcp-server, iperf3, tcpdump
-- **Результат:** Статическая/динамическая маршрутизация, SNAT/DNAT, SSH Tunnels, диагностика трафика.
-- 🔗 *[Ссылка на папку/файлы проекта]*
+- Проводит диагностику пользователя, анализирует рынок вакансий (HH.ru API), формирует персональный учебный план
+- Интеграция с Tavily Search для поиска актуальных материалов, суммаризация новостей через RSS
+- Управление контекстом диалога через SimpleMemory, кастомная логика обхода ограничений tool_calls
+- **Результат**: рабочий прототип с экспортированными JSON-воркфлоу, готовый к масштабированию
 
-### 🐧 Linux Base & Bash Scripting
-Набор скриптов для администрирования: сбор информации о системе, управление файловой системой, парсинг логов, настройка SSH/cron.
-- **Стек:** Bash (awk, sed, grep, validation), systemd, cron, fdisk/df/du
-- 🔗 *[Ссылка на папку/файлы проекта]*
+🔗 [Исходный код](./05-llm-agent/)
 
-## 📈 IT Образование & Курсы 
-- **Школа 21 (Сбер)** — Инженерное дело, DevOps/SRE трек (2025–н.в.)
-- **SQL Bootcamp** — Углублённый курс
+---
 
+### 📊 [Linux Monitoring v2.0](./04-monitoring-v2/README.md)
+> Система мониторинга метрик сервера в реальном времени с визуализацией в Grafana.
+
+- Развёрнут стек Prometheus + Grafana + node_exporter: сбор CPU, RAM, Disk I/O, Network
+- Написан кастомный bash-exporter для nginx-метрик в формате Prometheus
+- Настроен GoAccess для анализа веб-логов, алертинг при превышении порогов
+- **Результат**: дашборды с реальными метриками, нагрузочное тестирование через `stress` и `iperf3`
+
+🔗 [Исходный код](./04-monitoring-v2/)
+
+---
+
+### 🌐 [Сети в Linux](./02-networks/README.md)
+> Лабораторный стенд из 5 виртуальных машин с полноценной сетевой инфраструктурой.
+
+- Статическая/динамическая маршрутизация, DHCP-сервер, NAT (SNAT/DNAT), фаервол на iptables
+- Диагностика: `tcpdump`, `iperf3`, `traceroute`, `nmap`, анализ таблиц маршрутизации
+- Бонус: SSH Tunnels (Local/Remote forwarding) для доступа к сервисам за фаерволом
+- **Результат**: полностью рабочая топология с документацией и конфигурациями
+
+🔗 [Исходный код](./02-networks/) • [Полный отчёт](./02-networks/src/report.md)
+
+---
+
+### 🐧 [Linux Base & Bash Scripting](./01-linux-base/README.md)
+> Набор скриптов и отчётов по базовому администрированию Ubuntu Server.
+
+- Установка и настройка системы: пользователи, sudo, NTP, SSH на нестандартном порту
+- Скрипты для сбора системной информации, анализа логов, управления дисками и планировщиком cron
+- Работа с утилитами: `top/htop`, `fdisk`, `df/du/ncdu`, `systemd-journal`
+- **Результат**: автоматизированные задачи администрирования, готовность к работе в production-среде
+
+🔗 [Исходный код](./01-linux-base/) • [Полный отчёт](./01-linux-base/src/report.md)
+
+---
+
+### 💾 [SQL Bootcamp](./06-sql-bootcamp/README.md)
+> Продвинутые запросы в PostgreSQL: от JOIN до оконных функций и оптимизации.
+
+- Сложные запросы: рекурсивные CTE, оконные функции (RANK, LAG/LEAD, NTILE), операторы множеств
+- Оптимизация: анализ `EXPLAIN`, индексы (B-Tree, многоколоночные, частичные), покрытие запросов
+- Алгоритмический SQL: задача коммивояжёра (TSP) через рекурсивные обходы графов
+- **Результат**: 50+ протестированных запросов, понимание планов выполнения и влияния индексов
+
+🔗 [Исходный код](./06-sql-bootcamp/) 
+
+---
+
+## 📈 Образование
+
+| Период | Организация | Направление |
+|--------|-------------|-------------|
+| 2025–н.в. | **Школа 21 (Сбер)** | Инженерное дело, DevOps/SRE трек |
+| 2025 | **SQL Bootcamp** | Углублённый курс: CTE, оконные функции, оптимизация |
+| 2017 | **РЭУ им. Г.В. Плеханова** | Магистр: Финансовая аналитика |
+| 2015 | **РЭУ им. Г.В. Плеханова** | Бакалавр: Международные экономические отношения |
+
+---
 
 ## 📬 Контакты
+
 - 📧 [nail.matygullin@gmail.com](mailto:nail.matygullin@gmail.com)
-- 💬 Telegram: [@Matygullin](https://t.me/Matygullin)
+- 💬 [Telegram: @Matygullin](https://t.me/Matygullin)
+- 🐙 [GitHub: Nmat-dev](https://github.com/Nmat-dev)
+- 📍 Москва | Готов к удалённой работе / гибрид / офис
+
+---
+
+> ✨ *Портфолио обновляется. Последний апдейт: `$(date +%Y-%m-%d)`*
