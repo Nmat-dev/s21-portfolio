@@ -1,6 +1,6 @@
-# 👨‍💻 Наиль Матыгуллин | SRE & AI/LLM Enthusiast
+# 👨‍💻 Наиль Матыгуллин
 
-> Практикующий инженер-самоучка. Фокус на Pyton(update soon), Linux-администрировании, автоматизации (Bash, SQL) и создании агентных систем на базе LLM.
+> Практикующий инженер-самоучка. Фокус на python(update soon), Linux-администрировании, автоматизации (Bash, SQL) и создании агентных систем на базе LLM.
 
 [📧 Email](mailto:nail.matygullin@gmail.com) • [💬 Telegram](https://t.me/Matygullin) • [🐙 GitHub](https://github.com/Nmat-dev)
 
